@@ -85,6 +85,7 @@ export PATH="%{grte_top}/bin:%{grte_top}/sbin:$PATH"
 %{target_top}/x86/include/*
 %{target_top}/x86/lib/*
 %{target_top}/x86/share/*
+%{target_top}/x86/libexec/*
 
 %changelog
 * Mon Jun 01 2015 Release Engineer <%{maintainer_email}>

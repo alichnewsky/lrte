@@ -127,7 +127,7 @@ def main():
     mounts.append((os.path.abspath(args.upstream_source), sources_dir))
 
     env = {
-        'JFLAGS' : '-j8',
+        'JFLAGS' : '-j32',
         'GRTE_PACKAGE_PREFIX' : args.lrte_package_prefix,
     }
     if args.email:

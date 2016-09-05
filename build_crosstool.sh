@@ -37,13 +37,13 @@ CROSSTOOL_GCC_VERSION="4.9"
 
 # Assume the clang source code is checked out following
 # http://clang.llvm.org/get_started.html
-CROSSTOOL_CLANG_VERSION="3.7"
+CROSSTOOL_CLANG_VERSION="3.9"
 
 : ${crosstool_rpmver:="1.0"}
 # Update this each time new RPM's are built.
 : ${crosstool_rpmrel:="8"}
 
-export PARALLELMFLAGS="${JFLAGS:-j8}"
+export PARALLELMFLAGS="${JFLAGS:-j32}"
 [ -z "${EMAIL}" ] && {
     EMAIL="foo@bar.io"
     export EMAIL
@@ -58,12 +58,18 @@ done
 ln -sf /bin/bash /bin/sh
 
 # install packages that are needed by building binutils and clang
-apt-get update
-apt-get install -y flex bison rpm texinfo texi2html libxml2-dev make alien
+apt-get update --fix-missing
+apt-get install -y flex bison rpm texinfo texi2html libxml2-dev make alien wget python
 
 function build_rpm() {
     local rpmrel=$1
     local spec_file=$2
+
+    # avoid issues in rpmbuild within docker.
+    # rpmbuild is evoked by the default user account (root)
+    # when the files are mounted with a volume and do not have root permissions.
+    chown root:root /sources/*.tar.*
+    
     rpmbuild \
         --dbpath /dev/null \
         --define "_hash_empty_files 1" \
@@ -120,10 +126,10 @@ dpkg -i ${DEB_DIR}/${GRTEBASENAME}-crosstool${CROSSTOOL_VERSION}-gcc-${CROSSTOOL
 
 # Build cmake because cmake in ubuntu 13 is too old
 mkdir -p ${STAGING}/cmake
-CMAKE_VERSION=3.3.2
+CMAKE_VERSION=3.6.1
 if [ ! -e ${CROSSTOOL_SOURCES}/cmake-${CMAKE_VERSION}.tar.gz ]; then
     pushd ${CROSSTOOL_SOURCES}
-    wget http://cmake.org/files/v3.3/cmake-${CMAKE_VERSION}.tar.gz
+    wget http://cmake.org/files/v3.6/cmake-${CMAKE_VERSION}.tar.gz
     popd
 fi
 tar zxf ${CROSSTOOL_SOURCES}/cmake-${CMAKE_VERSION}.tar.gz -C ${STAGING}/cmake
