@@ -13,6 +13,7 @@ def start_container(docker_image, command,
                     attach_stdin = False,
                     attach_stderr = False,
                     attach_stdout = False,
+                    post_mortem = False,
                     privileged = False,
                     workdir = None,
                     mounts = [],
@@ -39,7 +40,10 @@ def start_container(docker_image, command,
         subprocess.call(['/usr/bin/docker', 'rm', '-f', container_name],
                         stderr = subprocess.DEVNULL)
     cmd = ['/usr/bin/docker', 'run', '-i', '-t',
-           '--net=bridge', '--rm']
+           '--net=bridge']
+    
+    if not post_mortem:
+        cmd.append('--rm')
     if privileged:
         cmd.append('--privileged')
     if container_name:
@@ -97,6 +101,10 @@ def main():
                         help='Directory to store the output')
     parser.add_argument('--debug', action='store_true',
                         help='Start the docker container using bash')
+    
+    parser.add_argument('--post_mortem', action='store_true',
+                        help='Do not remove container upon failure')
+    
     parser.add_argument('--no_build_lrte', action='store_true',
                         help='Skip building the whole lrte')
     parser.add_argument('--lrte_prefix', default='/usr/lrte',
@@ -149,7 +157,10 @@ def main():
                         mounts = mounts,
                         start_subprocess=False,
                         environment = env)
-
+    post_mortem = False
+    if args.post_mortem:
+        post_mortem = True
+        
     lrte_output = os.path.join(args.output, 'lrte')
     lrte_output_in_docker = os.path.join(output_dir, 'lrte')
     if not args.no_build_lrte:
@@ -159,6 +170,7 @@ def main():
                         attach_stdin = True,
                         attach_stdout = True,
                         attach_stderr = True,
+                        post_mortem = post_mortem,
                         mounts = mounts,
                         environment = env)
         print('deb packages: %s' % (os.path.join(lrte_output, 'results/debs')))
@@ -184,6 +196,7 @@ def main():
                         attach_stdin = True,
                         attach_stdout = True,
                         attach_stderr = True,
+                        post_mortem = post_mortem,
                         mounts = mounts,
                         environment = env)
 
