@@ -37,7 +37,7 @@ CROSSTOOL_GCC_VERSION="4.9"
 
 # Assume the clang source code is checked out following
 # http://clang.llvm.org/get_started.html
-CROSSTOOL_CLANG_VERSION="3.9"
+CROSSTOOL_CLANG_VERSION="4.0"
 
 : ${crosstool_rpmver:="1.0"}
 # Update this each time new RPM's are built.
@@ -59,7 +59,7 @@ ln -sf /bin/bash /bin/sh
 
 # install packages that are needed by building binutils and clang
 apt-get update --fix-missing
-apt-get install -y flex bison rpm texinfo texi2html libxml2-dev make alien wget python
+apt-get install --fix-missing -y flex bison rpm texinfo texi2html libxml2-dev make alien wget python
 
 function build_rpm() {
     local rpmrel=$1

@@ -72,9 +72,10 @@ CFLAGS="-O2 -isystem %{grte_top}/include -L%{grte_top}/lib64"
 CC_COMMON="%{grte_top}/bin/gcc -m64 ${CFLAGS}"
 CXX_COMMON="%{grte_top}/bin/g++ -m64 ${CFLAGS}"
 LDFLAGS="-Wl,-I,%{grte_top}/lib64/ld-linux-x86-64.so.2"
+# GFORTRAN AND GOMP NEED TO BE SHARED AS WELL. If this does not work, use --enable-shared for everythign
 COMMON_GCC_OPTIONS=" \
-    --enable-shared=libgcc,libssp,libstdc++\
-    --enable-languages=c,c++ --with-sysroot=%{grte_top} \
+    --enable-shared \
+    --enable-languages=c,c++,fortran,lto --with-sysroot=%{grte_top} \
     --with-runtime-root-prefix=%{grte_top} \
     --with-native-system-header-dir=/include \
     --with-local-prefix=/ \
