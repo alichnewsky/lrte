@@ -58,8 +58,9 @@ done
 ln -sf /bin/bash /bin/sh
 
 # install packages that are needed by building binutils and clang
+# ncurses is required by cmake 3.6 even if I don't want it linked into llvm (since it is not crosscompiled)
 apt-get update --fix-missing
-apt-get install --fix-missing -y flex bison rpm texinfo texi2html libxml2-dev make alien wget python
+apt-get install --fix-missing -y flex bison rpm texinfo texi2html libxml2-dev make alien wget python python-dev subversion libedit-dev libncurses5-dev swig
 
 function build_rpm() {
     local rpmrel=$1
