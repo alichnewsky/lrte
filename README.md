@@ -58,6 +58,145 @@ For example:
         /usr/lrte/v2/lib64/ld-linux-x86-64.so.2 (0x00007f6e55657000)
 ```
 
-You can also refer to [build
+You can also refer to this *external* [build
 guide](https://github.com/mzhaom/lrte/wiki/Build-Guide) if you prefer
 building everything from source code for further customization.
+
+
+Building ISPC from github.com
+=============================
+The version of clang-4.0 I use for now is Google's not trunk. *FOR NOW*.
+
+And that is not clang 4.0 as ispc expects... Therefore it is useful to fool it into thinking it is using clang 3.9!
+and therefore path `ispc_version.h`
+
+In order to use a crosstool compiler to build it, we also need to patch the makefile.
+
+There is still a bug in the ispc 32 bit build, I think.
+
+```
+diff --git a/Makefile b/Makefile
+index e249a5e..7a41281 100644
+--- a/Makefile
++++ b/Makefile
+@@ -94,6 +94,9 @@ LLVM_CXXFLAGS=$(shell $(LLVM_CONFIG) --cppflags) $(DNDEBUG_FLAG)
+ LLVM_VERSION=LLVM_$(shell $(LLVM_CONFIG) --version | sed -e 's/svn//' -e 's/\./_/' -e 's/\..*//')
+ LLVM_VERSION_DEF=-D$(LLVM_VERSION)
+ 
++LLVM_CXXFLAGS += --sysroot=/usr/lrte/v2
++
++
+ LLVM_COMPONENTS = engine ipo bitreader bitwriter instrumentation linker 
+ # Component "option" was introduced in 3.3 and starting with 3.4 it is required for the link step.
+ # We check if it's available before adding it (to not break 3.2 and earlier).
+@@ -123,7 +126,7 @@ endif
+ 
+ # There is no logical OR in GNU make. 
+ # This 'ifneq' acts like if( !($(LLVM_VERSION) == LLVM_3_2 || $(LLVM_VERSION) == LLVM_3_3 || $(LLVM_VERSION) == LLVM_3_4))
+-ifeq (,$(filter $(LLVM_VERSION), LLVM_3_2 LLVM_3_3 LLVM_3_4))
++ifeq (,$(filter $(LLVM_VERSION), LLVM_3_2 LLVM_3_3 LLVM_3_4 LLVM_4_0))
+     ISPC_LIBS += -lcurses -lz
+     # This is here because llvm-config fails to report dependency on tinfo library in some case.
+     # This is described in LLVM bug 16902.
+@@ -161,6 +164,10 @@ else
+ endif
+ 
+ CXX=clang++
++
++CC=clang
++CCFLAGS += --sysroot=/usr/lrte/v2
++
+ OPT=-O2
+ CXXFLAGS=$(OPT) $(LLVM_CXXFLAGS) -I. -Iobjs/ -I$(CLANG_INCLUDE)  \
+        $(LLVM_VERSION_DEF) \
+@@ -190,6 +197,8 @@ ifeq ($(ARCH_OS),Linux)
+ #    LDFLAGS=-static-libgcc -static-libstdc++
+ endif
+ 
++DYNAMIC_LINKER_FLAGS= -Wl,-dynamic-linker,/usr/lrte/v2/lib64/ld-linux-x86-64.so.2 
++
+ LEX=flex
+ YACC=bison -d -v -t
+ 
+@@ -262,7 +271,7 @@ doxygen:
+ 
+ ispc: print_llvm_src dirs $(OBJS)
+        @echo Creating ispc executable
+-       @$(CXX) $(OPT) $(LDFLAGS) -o $@ $(OBJS) $(ISPC_LIBS)
++       @$(CXX) $(OPT) $(DYNAMIC_LINKER_FLAGS) $(LDFLAGS) -o $@ $(OBJS) $(ISPC_LIBS)
+ 
+ # Use clang as a default compiler, instead of gcc
+ # This is default now.
+@@ -315,46 +324,46 @@ objs/lex.o: objs/lex.cpp $(HEADERS) objs/parse.cc
+        @$(CXX) $(CXXFLAGS) -o $@ -c $<
+ 
+ objs/builtins-dispatch.cpp: builtins/dispatch.ll builtins/util.m4 builtins/util-nvptx.m4 builtins/svml.m4 $(wildcard builtins/*common.ll)
+-       @echo Creating C++ source from builtins definition file $<
++       @echo Creating C++ source $@ from builtins definition file $<
+        @m4 -Ibuiltins/ -DLLVM_VERSION=$(LLVM_VERSION) -DBUILD_OS=UNIX $< | python bitcode2cpp.py $< > $@
+ 
+ objs/builtins-%-32bit.cpp: builtins/%.ll builtins/util.m4 builtins/util-nvptx.m4 builtins/svml.m4 $(wildcard builtins/*common.ll)
+-       @echo Creating C++ source from builtins definition file $< \(32 bit version\)
++       @echo Creating C++ source $@ from builtins definition file $< \(32 bit version\)
+        @m4 -Ibuiltins/ -DLLVM_VERSION=$(LLVM_VERSION) -DBUILD_OS=UNIX -DRUNTIME=32 $< | python bitcode2cpp.py $< 32bit > $@
+ 
+ objs/builtins-%-64bit.cpp: builtins/%.ll builtins/util.m4 builtins/util-nvptx.m4 builtins/svml.m4 $(wildcard builtins/*common.ll)
+-       @echo Creating C++ source from builtins definition file $< \(64 bit version\)
++       @echo Creating C++ source $@ from builtins definition file $< \(64 bit version\)
+        @m4 -Ibuiltins/ -DLLVM_VERSION=$(LLVM_VERSION) -DBUILD_OS=UNIX -DRUNTIME=64 $< | python bitcode2cpp.py $< 64bit > $@
+ 
+ objs/builtins-c-32.cpp: builtins/builtins.c
+-       @echo Creating C++ source from builtins definition file $<
++       @echo Creating C++ source $@ from builtins definition file $<
+        @$(CLANG) -m32 -emit-llvm -c $< -o - | llvm-dis - | python bitcode2cpp.py c 32 > $@
+ 
+ objs/builtins-c-64.cpp: builtins/builtins.c
+-       @echo Creating C++ source from builtins definition file $<
++       @echo Creating C++ source $@ from builtins definition file $<
+        @$(CLANG) -m64 -emit-llvm -c $< -o - | llvm-dis - | python bitcode2cpp.py c 64 > $@
+ 
+ objs/stdlib_mask1_ispc.cpp: stdlib.ispc
+-       @echo Creating C++ source from $< for mask1
++       @echo Creating C++ source $@ from $< for mask1
+        @$(CLANG) -E -x c -DISPC_MASK_BITS=1 -DISPC=1 -DPI=3.14159265358979 $< -o - | \
+                python stdlib2cpp.py mask1 > $@
+ 
+ objs/stdlib_mask8_ispc.cpp: stdlib.ispc
+-       @echo Creating C++ source from $< for mask8
++       @echo Creating C++ source $@ from $< for mask8
+        @$(CLANG) -E -x c -DISPC_MASK_BITS=8 -DISPC=1 -DPI=3.14159265358979 $< -o - | \
+                python stdlib2cpp.py mask8 > $@
+ 
+ objs/stdlib_mask16_ispc.cpp: stdlib.ispc
+-       @echo Creating C++ source from $< for mask16
++       @echo Creating C++ source $@ from $< for mask16
+        @$(CLANG) -E -x c -DISPC_MASK_BITS=16 -DISPC=1 -DPI=3.14159265358979 $< -o - | \
+                python stdlib2cpp.py mask16 > $@
+ 
+ objs/stdlib_mask32_ispc.cpp: stdlib.ispc
+-       @echo Creating C++ source from $< for mask32
++       @echo Creating C++ source $@ from $< for mask32
+        @$(CLANG) -E -x c -DISPC_MASK_BITS=32 -DISPC=1 -DPI=3.14159265358979 $< -o - | \
+                python stdlib2cpp.py mask32 > $@
+ 
+ objs/stdlib_mask64_ispc.cpp: stdlib.ispc
+-       @echo Creating C++ source from $< for mask64
++       @echo Creating C++ source $@ from $< for mask64
+        @$(CLANG) -E -x c -DISPC_MASK_BITS=64 -DISPC=1 -DPI=3.14159265358979 $< -o - | \
+                python stdlib2cpp.py mask64 > $@
+diff --git a/ispc_version.h b/ispc_version.h
+index 7122d55..fdb192f 100644
+--- a/ispc_version.h
++++ b/ispc_version.h
+@@ -41,7 +41,9 @@
+ #define ISPC_VERSION "1.9.2dev"
+ #include "llvm/Config/llvm-config.h"
+ 
+-#define ISPC_LLVM_VERSION ( LLVM_VERSION_MAJOR * 10000 + LLVM_VERSION_MINOR * 100 )
++// AL : this is not quite ready for the LLVM 4.0 google version I built.
++//#define ISPC_LLVM_VERSION ( LLVM_VERSION_MAJOR * 10000 + LLVM_VERSION_MINOR * 100 )
++#define ISPC_LLVM_VERSION ( 3 * 10000 + 9 * 100)
+ 
+ #define ISPC_LLVM_3_2 30200
+ #define ISPC_LLVM_3_3 30300
+```
