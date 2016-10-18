@@ -38,7 +38,7 @@ git clone https://github.com/alichnewsky/lrte.git
 cd lrte
 TAR_DIR=upstream ./grte/downloads.sh
 
-./release.py  --no_build_crosstool --email alichnewsky@gmail.com --docker_image=debian:jessie
+./release.py  --no_build_crosstool --email foo@bar.com --docker_image=debian:jessie
 ```
 
 Download gcc, clang and ispc crosstool source code
@@ -58,7 +58,7 @@ Build and install crosstools
 Only building ispc when lrte, `gcc` and `clang` crosstools have already been built
 ```
 
-./release.py  --no_build_lrte --crosstool_skip gcc clang --email alichnewsky@gmail.com --docker_image=debian:jessie
+./release.py  --no_build_lrte --crosstool_skip gcc clang --email foo@bar.com --docker_image=debian:jessie
 
 ```
 
