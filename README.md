@@ -51,7 +51,7 @@ bash crosstool/get-ispc-from-github.sh
 
 Build and install crosstools
 ```
-./release.py  --no_build_lrte --email alichnewsky@gmail.com --docker_image=debian:jessie
+./release.py  --no_build_lrte --email foo@bar.com --docker_image=debian:jessie
 
 ```
 
