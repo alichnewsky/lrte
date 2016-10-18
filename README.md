@@ -8,7 +8,7 @@ ChangeLog
 
  - still using Google's GCC 4.9.2 branch and Clang 4.0 dev branches
  - clang includes openmp and polly
- - added a build of Intel's [https://github.com/ispc/ispc/][ispc]
+ - added a build of Intel's [https://github.com/ispc/ispc/][ispc] : Work In progress
 
 
 Install
@@ -121,14 +121,9 @@ For example:
         /usr/lrte/v2/lib64/ld-linux-x86-64.so.2 (0x00007f6e55657000)
 ```
 
-You can also refer to [build
+You can also refer to this *external* [build
 guide](https://github.com/mzhaom/lrte/wiki/Build-Guide) if you prefer
 building everything from source code for further customization.
 
 
-From a GCE machine, using a Debian VM
-=====================================
-```
 
-
-```
