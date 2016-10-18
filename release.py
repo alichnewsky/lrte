@@ -7,6 +7,7 @@ import argparse
 import os
 import os.path
 import subprocess
+import shlex
 
 def start_container(docker_image, command,
                     container_name = None,
@@ -69,7 +70,7 @@ def start_container(docker_image, command,
         cmd.append(command)
     else:
         cmd += command
-    print("=== Running %s" % (str(cmd)))
+    print('+ '.join(shlex.quote(x) for x in cmd))
     if start_subprocess:
         subprocess.check_call(cmd)
     else:
@@ -120,7 +121,7 @@ def main():
                         help='Directory that stores original downloaded packages, like glibc code')
     parser.add_argument('--no_build_crosstool', action='store_true',
                         help='Skip building crosstool')
-    parser.add_argument('--crosstool_skip', choices=['gcc'], action='append',
+    parser.add_argument('--crosstool_skip', nargs='+', choices=['gcc','clang', 'ispc'], action='append',
                         help='Steps to skip when building crosstool')
 
     args = parser.parse_args()
@@ -186,7 +187,7 @@ def main():
             os.path.join(args.upstream_source, 'llvm/tools/clang'),
             'http://clang.llvm.org/get_started.html')
         if args.crosstool_skip:
-            for skip in args.crosstool_skip:
+            for skip in args.crosstool_skip[0]:
                 env['SKIP_CROSSTOOL_' + skip.upper()] = '1'
         start_container(args.docker_image,
                         ['./build_crosstool.sh', args.lrte_prefix,

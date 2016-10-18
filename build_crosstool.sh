@@ -39,6 +39,9 @@ CROSSTOOL_GCC_VERSION="4.9"
 # http://clang.llvm.org/get_started.html
 CROSSTOOL_CLANG_VERSION="4.0"
 
+CROSSTOOL_ISPC_VERSION="1.9.2dev"
+ISPC_GIT_COMMIT="d4a8afd"
+
 : ${crosstool_rpmver:="1.0"}
 # Update this each time new RPM's are built.
 : ${crosstool_rpmrel:="8"}
@@ -59,8 +62,9 @@ ln -sf /bin/bash /bin/sh
 
 # install packages that are needed by building binutils and clang
 # ncurses is required by cmake 3.6 even if I don't want it linked into llvm (since it is not crosscompiled)
+apt-get clean
 apt-get update --fix-missing
-apt-get install --fix-missing -y flex bison rpm texinfo texi2html libxml2-dev make alien wget python python-dev subversion libedit-dev libncurses5-dev swig
+apt-get install --fix-missing -y -q alien rpm
 
 function build_rpm() {
     local rpmrel=$1
@@ -94,6 +98,8 @@ function build_rpm() {
         --define "gcc_svn_version ${GCC_SVN_VERSION}" \
         --define "crosstool_clang_version ${CROSSTOOL_CLANG_VERSION}" \
         --define "clang_svn_version ${CLANG_SVN_VERSION}" \
+        --define "crosstool_ispc_version ${CROSSTOOL_ISPC_VERSION}" \
+        --define "ispc_git_commit ${ISPC_GIT_COMMIT}" \
         -bb ${spec_file}
 }
 
@@ -119,25 +125,40 @@ set -e
 # package foo ${CROSSTOOL_GCC_VERSION} ${GCC_SVN_VERSION}
 
 [ -z "${SKIP_CROSSTOOL_GCC}" ] && {
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -q --fix-missing -y flex bison texinfo texi2html libxml2-dev make wget python python-dev subversion libedit-dev libncurses5-dev swig
     package gcc ${CROSSTOOL_GCC_VERSION} ${GCC_SVN_VERSION}
 }
 
-# Install the crosstool gcc to build clang
-dpkg -i ${DEB_DIR}/${GRTEBASENAME}-crosstool${CROSSTOOL_VERSION}-gcc-${CROSSTOOL_GCC_VERSION}_${crosstool_rpmver}-${crosstool_rpmrel}.${GCC_SVN_VERSION}svn_amd64.deb
+[ -z "${SKIP_CROSSTOOL_CLANG}" ] && {
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -q --fix-missing -y flex bison texinfo texi2html libxml2-dev make wget python python-dev subversion libedit-dev libncurses5-dev swig
+    
+    # Install the crosstool gcc to build clang
+    dpkg -i ${DEB_DIR}/${GRTEBASENAME}-crosstool${CROSSTOOL_VERSION}-gcc-${CROSSTOOL_GCC_VERSION}_${crosstool_rpmver}-${crosstool_rpmrel}.${GCC_SVN_VERSION}svn_amd64.deb
 
-# Build cmake because cmake in ubuntu 13 is too old
-mkdir -p ${STAGING}/cmake
-CMAKE_VERSION=3.6.1
-if [ ! -e ${CROSSTOOL_SOURCES}/cmake-${CMAKE_VERSION}.tar.gz ]; then
-    pushd ${CROSSTOOL_SOURCES}
-    wget http://cmake.org/files/v3.6/cmake-${CMAKE_VERSION}.tar.gz
+    # Build cmake because cmake in ubuntu 13 is too old
+    mkdir -p ${STAGING}/cmake
+    CMAKE_VERSION=3.6.1
+    if [ ! -e ${CROSSTOOL_SOURCES}/cmake-${CMAKE_VERSION}.tar.gz ]; then
+	pushd ${CROSSTOOL_SOURCES}
+	wget http://cmake.org/files/v3.6/cmake-${CMAKE_VERSION}.tar.gz
+	popd
+    fi
+    tar zxf ${CROSSTOOL_SOURCES}/cmake-${CMAKE_VERSION}.tar.gz -C ${STAGING}/cmake
+    pushd ${STAGING}/cmake/cmake-${CMAKE_VERSION}
+    ./configure --parallel=${PARALLELMFLAGS}
+    make ${PARALLELMFLAGS}
+    make install
     popd
-fi
-tar zxf ${CROSSTOOL_SOURCES}/cmake-${CMAKE_VERSION}.tar.gz -C ${STAGING}/cmake
-pushd ${STAGING}/cmake/cmake-${CMAKE_VERSION}
-./configure --parallel=${PARALLELMFLAGS}
-make ${PARALLELMFLAGS}
-make install
-popd
 
-package clang ${CROSSTOOL_CLANG_VERSION} ${CLANG_SVN_VERSION}
+    package clang ${CROSSTOOL_CLANG_VERSION} ${CLANG_SVN_VERSION}
+
+}
+
+[ -z "${SKIP_CROSSTOOL_ISPC}" ] && {
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -q  flex bison make git python
+    
+    dpkg -i ${DEB_DIR}/${GRTEBASENAME}-crosstool${CROSSTOOL_VERSION}-gcc-${CROSSTOOL_GCC_VERSION}_${crosstool_rpmver}-${crosstool_rpmrel}.${GCC_SVN_VERSION}svn_amd64.deb
+    dpkg -i ${DEB_DIR}/${GRTEBASENAME}-crosstool${CROSSTOOL_VERSION}-clang-${CROSSTOOL_CLANG_VERSION}_${crosstool_rpmver}-${crosstool_rpmrel}.${CLANG_SVN_VERSION}svn_amd64.deb
+
+    package ispc ${CROSSTOOL_ISPC_VERSION} ${ISPC_GIT_COMMIT}
+}
